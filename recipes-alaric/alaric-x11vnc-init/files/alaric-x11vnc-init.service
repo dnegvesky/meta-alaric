@@ -1,9 +1,0 @@
-[Unit]
-Description=Alaric X11VNC Server
-Documentation=man:x11vnc
-
-[Service]
-ExecStart=/usr/bin/alaric-x11vnc-init.sh
-
-[Install]
-WantedBy=multi-user.target

@@ -2,7 +2,7 @@ PR = "r0"
 FILESEXTRAPATHS_prepend := "${THISDIR}/config:"
 
 SRC_URI_append_alaric += " \
-				file://socfpga-4.9.78-ltsi/cfg/socfpga_rxc_defconfig \
+				file://socfpga-4.9.78-ltsi/cfg/defconfig \
 				file://socfpga-4.9.78-ltsi/cfg/altvipfb.cfg \
 				file://socfpga-4.9.78-ltsi/cfg/block.cfg \
 				file://socfpga-4.9.78-ltsi/cfg/cma.cfg \
