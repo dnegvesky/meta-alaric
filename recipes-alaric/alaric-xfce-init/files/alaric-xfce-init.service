@@ -1,0 +1,10 @@
+[Unit]
+Description=REFLEX CES XFCE Session
+After=alaric-fpga-init.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/startxfce4
+
+[Install]
+WantedBy=basic.target

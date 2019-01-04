@@ -1,0 +1,522 @@
+diff --git a/arch/arm/cpu/armv7/socfpga_arria10/sdram.c b/arch/arm/cpu/armv7/socfpga_arria10/sdram.c
+index b90ee2e..5f8b39e 100644
+--- a/arch/arm/cpu/armv7/socfpga_arria10/sdram.c
++++ b/arch/arm/cpu/armv7/socfpga_arria10/sdram.c
+@@ -883,7 +883,9 @@ int dram_init(void)
+ {
+ 	bd_t *bd;
+ 	unsigned long addr;
++#if !defined(RXC_CONFIG_NO_RBF_IMAGE)
+ 	int rval = 0;
++#endif
+
+ 	WATCHDOG_RESET();
+
+@@ -921,6 +923,7 @@ int dram_init(void)
+ 	if (is_external_fpga_config(gd->fdt_blob)) {
+ 		ddr_calibration_sequence();
+ 	} else {
++#if !defined(RXC_CONFIG_NO_RBF_IMAGE)
+ #if defined(CONFIG_MMC)
+ 		rval = cff_from_sdmmc_env();
+ #elif defined(CONFIG_CADENCE_QSPI)
+@@ -928,7 +931,9 @@ int dram_init(void)
+ #else
+ #error "unsupported config"
+ #endif
+-		if (rval > 0) {
++		if (rval > 0)
++#endif /* RXC_CONFIG_NO_RBF_IMAGE */
++	   	{
+ 			config_pins(gd->fdt_blob, "shared");
+
+ 			reset_deassert_shared_connected_peripherals();
+diff --git a/arch/arm/include/asm/arch-socfpga_arria10/gpio.h b/arch/arm/include/asm/arch-socfpga_arria10/gpio.h
+index b749e7f..16a869f 100644
+--- a/arch/arm/include/asm/arch-socfpga_arria10/gpio.h
++++ b/arch/arm/include/asm/arch-socfpga_arria10/gpio.h
+@@ -4,4 +4,5 @@
+  * SPDX-License-Identifier:	GPL-2.0+
+  */
+
+-
++int altera_pio_init(u32 base, u8 width, char iot, u32 rstval, u32 negmask,
++		            const char *label);
+diff --git a/arch/arm/include/asm/arch-socfpga_arria10/hardware.h b/arch/arm/include/asm/arch-socfpga_arria10/hardware.h
+index 17fc77e..1f735e5 100755
+--- a/arch/arm/include/asm/arch-socfpga_arria10/hardware.h
++++ b/arch/arm/include/asm/arch-socfpga_arria10/hardware.h
+@@ -65,6 +65,9 @@
+ #define SOCFPGA_OSC1TIMER0_ADDRESS 		(0xffd00000)
+ #define SOCFPGA_CLKMGR_ADDRESS			(0xffd04000)
+ #define SOCFPGA_RSTMGR_ADDRESS			(0xffd05000)
++#define SOCFPGA_GPIO0_ADDRESS           (0xFFC02900)
++#define SOCFPGA_GPIO1_ADDRESS           (0xFFC02A00)
++#define SOCFPGA_GPIO2_ADDRESS           (0xFFC02B00)
+
+ #define SOCFPGA_SDR_ADDRESS			(0xffcfb000)
+ #define SOCFPGA_SDR_SCHEDULER_ADDRESS		(0xffd12400)
+diff --git a/arch/arm/include/asm/arch-socfpga_arria10/sdram.h b/arch/arm/include/asm/arch-socfpga_arria10/sdram.h
+index deed39a..aead249 100755
+--- a/arch/arm/include/asm/arch-socfpga_arria10/sdram.h
++++ b/arch/arm/include/asm/arch-socfpga_arria10/sdram.h
+@@ -299,49 +299,49 @@ union caltiming9_reg {
+ #define IRQ_ECC_SERR				34
+ #define IRQ_ECC_DERR				32
+
+-#define ALT_ECC_HMC_OCP_DDRIOCTRL_IO_SIZE_MSK			0x00000003
++#define ALT_ECC_HMC_OCP_DDRIOCTRL_IO_SIZE_MSK			0x00000001
+
+ #define ALT_ECC_HMC_OCP_INTSTAT_SERRPENA_SET_MSK		0x00000001
+ #define ALT_ECC_HMC_OCP_INTSTAT_DERRPENA_SET_MSK		0x00000002
+ #define ALT_ECC_HMC_OCP_ERRINTEN_SERRINTEN_SET_MSK		0x00000001
+ #define ALT_ECC_HMC_OCP_ERRINTEN_DERRINTEN_SET_MSK		0x00000002
+ #define ALT_ECC_HMC_OCP_INTMOD_INTONCMP_SET_MSK			0x00010000
+-#define ALT_ECC_HMC_OCP_INTMOD_SERR_SET_MSK			0x00000001
+-#define ALT_ECC_HMC_OCP_INTMOD_EXT_ADDRPARITY_SET_MSK		0x00000100
++#define ALT_ECC_HMC_OCP_INTMOD_SERR_SET_MSK				0x00000001
++#define ALT_ECC_HMC_OCP_INTMOD_EXT_ADDRPARITY_SET_MSK	0x00000100
+ #define ALT_ECC_HMC_OCP_ECCCTL_AWB_CNT_RST_SET_MSK		0x00010000
+ #define ALT_ECC_HMC_OCP_ECCCTL_CNT_RST_SET_MSK			0x00000100
+-#define ALT_ECC_HMC_OCP_ECCCTL_ECC_EN_SET_MSK			0x00000001
++#define ALT_ECC_HMC_OCP_ECCCTL_ECC_EN_SET_MSK			0x00000000
+ #define ALT_ECC_HMC_OCP_ECCCTL2_RMW_EN_SET_MSK			0x00000100
+ #define ALT_ECC_HMC_OCP_ECCCTL2_AWB_EN_SET_MSK			0x00000001
+ #define ALT_ECC_HMC_OCP_ERRINTEN_SERR_SET_MSK			0x00000001
+ #define ALT_ECC_HMC_OCP_ERRINTEN_DERR_SET_MSK			0x00000002
+ #define ALT_ECC_HMC_OCP_ERRINTEN_HMI_SET_MSK			0x00000004
+-#define ALT_ECC_HMC_OCP_INTSTAT_SERR_MSK			0x00000001
+-#define ALT_ECC_HMC_OCP_INTSTAT_DERR_MSK			0x00000002
+-#define ALT_ECC_HMC_OCP_INTSTAT_HMI_MSK				0x00000004
++#define ALT_ECC_HMC_OCP_INTSTAT_SERR_MSK				0x00000001
++#define ALT_ECC_HMC_OCP_INTSTAT_DERR_MSK				0x00000002
++#define ALT_ECC_HMC_OCP_INTSTAT_HMI_MSK					0x00000004
+ #define ALT_ECC_HMC_OCP_INTSTAT_ADDRMTCFLG_MSK			0x00010000
+ #define ALT_ECC_HMC_OCP_INTSTAT_ADDRPARFLG_MSK			0x00020000
+ #define ALT_ECC_HMC_OCP_INTSTAT_DERRBUSFLG_MSK			0x00040000
+
+ #define ALT_ECC_HMC_OCP_SERRCNTREG_VALUE				8
+
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_ACTTOACT_LSB	0
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_RDTOMISS_LSB	6
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_WRTOMISS_LSB	12
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_BURSTLEN_LSB	18
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_RDTOWR_LSB	21
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_WRTORD_LSB	26
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_BWRATIO_LSB	31
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_ACTTOACT_LSB	0	//21
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_RDTOMISS_LSB	6	//0
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_WRTOMISS_LSB	12	//0
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_BURSTLEN_LSB	18	//2
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_RDTOWR_LSB	21	//7
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_WRTORD_LSB	26	//10
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRTIMING_BWRATIO_LSB	31	//0
+
+ #define ALT_NOC_MPU_DDR_T_SCHED_DDRMOD_AUTOPRECHARGE_LSB	0
+-#define ALT_NOC_MPU_DDR_T_SCHED_DDRMOD_BWRATIOEXTENDED_LSB	1
++#define ALT_NOC_MPU_DDR_T_SCHED_DDRMOD_BWRATIOEXTENDED_LSB	1	//0
+
+-#define ALT_NOC_MPU_DDR_T_SCHED_ACTIVATE_RRD_LSB	0
+-#define ALT_NOC_MPU_DDR_T_SCHED_ACTIVATE_FAW_LSB	4
+-#define ALT_NOC_MPU_DDR_T_SCHED_ACTIVATE_FAWBANK_LSB	10
++#define ALT_NOC_MPU_DDR_T_SCHED_ACTIVATE_RRD_LSB		0	//3
++#define ALT_NOC_MPU_DDR_T_SCHED_ACTIVATE_FAW_LSB		4	//17
++#define ALT_NOC_MPU_DDR_T_SCHED_ACTIVATE_FAWBANK_LSB	10	//4
+
+-#define ALT_NOC_MPU_DDR_T_SCHED_DEVTODEV_BUSRDTORD_LSB	0
+-#define ALT_NOC_MPU_DDR_T_SCHED_DEVTODEV_BUSRDTOWR_LSB	2
++#define ALT_NOC_MPU_DDR_T_SCHED_DEVTODEV_BUSRDTORD_LSB	0	//3
++#define ALT_NOC_MPU_DDR_T_SCHED_DEVTODEV_BUSRDTOWR_LSB	2	//7
+ #define ALT_NOC_MPU_DDR_T_SCHED_DEVTODEV_BUSWRTORD_LSB	4
+
+ #define ALT_NOC_FW_DDR_END_ADDR_LSB	16
+diff --git a/board/altera/socfpga_arria10/socfpga_common.c b/board/altera/socfpga_arria10/socfpga_common.c
+index 74397bc..60888e2 100755
+--- a/board/altera/socfpga_arria10/socfpga_common.c
++++ b/board/altera/socfpga_arria10/socfpga_common.c
+@@ -14,9 +14,16 @@
+ #include <miiphy.h>
+ #include <netdev.h>
+ #include "../../../drivers/net/designware.h"
++#include <asm/gpio.h>
+
+ DECLARE_GLOBAL_DATA_PTR;
+
++#define NB_GPIOS_IN_GPIO_INTERFACE	24
++#define GPIO_USB_PHY 				11
++#define GPIO_ETH_PHY 				NB_GPIOS_IN_GPIO_INTERFACE+13
++#define GPIO0_LABEL                 "GPIO0"
++#define GPIO1_LABEL                 "GPIO1"
++
+ /*
+  * Initialization function which happen at early stage of c code
+  */
+@@ -31,8 +38,41 @@ int board_early_init_f(void)
+  */
+ int board_init(void)
+ {
++	unsigned int gpio;
++
+ 	/* adress of boot parameters for ATAG (if ATAG is used) */
+ 	gd->bd->bi_boot_params = 0x00000100;
++
++		/* Reset USB PHY */
++	if(altera_pio_init(SOCFPGA_GPIO0_ADDRESS,
++					    NB_GPIOS_IN_GPIO_INTERFACE,
++					    't',
++					    0, // reset value, not used in tri-state
++					    0, // negmask
++					    GPIO0_LABEL) != -1 )
++	{
++		gpio = GPIO_USB_PHY;
++		if(!gpio_request(gpio, GPIO0_LABEL))
++		{
++			gpio_direction_output(gpio,1);
++		}
++	}
++
++	/* Reset ETH PHY */
++	if(altera_pio_init(SOCFPGA_GPIO1_ADDRESS,
++					    NB_GPIOS_IN_GPIO_INTERFACE,
++					    't',
++					    0, // reset value, not used in tri-state
++					    0, // negmask
++					    GPIO1_LABEL) != -1)
++	{
++		gpio = GPIO_ETH_PHY;
++		if(!gpio_request(gpio, GPIO1_LABEL))
++		{
++			gpio_direction_output(gpio,1);
++		}
++	}
++
+ 	return 0;
+ }
+
+diff --git a/common/env_sf.c b/common/env_sf.c
+index 37ab13a..949f283 100644
+--- a/common/env_sf.c
++++ b/common/env_sf.c
+@@ -219,7 +219,10 @@ out:
+ #else
+ int saveenv(void)
+ {
+-	u32	saved_size, saved_offset, sector = 1;
++#if !defined(RXC_CONFIG_BOOTCOMMAND)
++	u32	saved_size, saved_offset;
++#endif
++	u32 sector = 1;
+ 	char	*saved_buffer = NULL;
+ 	int	ret = 1;
+ 	env_t	env_new;
+@@ -233,7 +236,9 @@ int saveenv(void)
+ 			return 1;
+ 		}
+ 	}
+-
++
++	/* We do not want to save remaining sector space */
++#if !defined(RXC_CONFIG_BOOTCOMMAND)
+ 	/* Is the sector larger than the env (i.e. embedded) */
+ 	if (CONFIG_ENV_SECT_SIZE > CONFIG_ENV_SIZE) {
+ 		saved_size = CONFIG_ENV_SECT_SIZE - CONFIG_ENV_SIZE;
+@@ -247,6 +252,7 @@ int saveenv(void)
+ 		if (ret)
+ 			goto done;
+ 	}
++#endif
+
+ 	if (CONFIG_ENV_SIZE > CONFIG_ENV_SECT_SIZE) {
+ 		sector = CONFIG_ENV_SIZE / CONFIG_ENV_SECT_SIZE;
+@@ -270,13 +276,15 @@ int saveenv(void)
+ 	if (ret)
+ 		goto done;
+
++#if !defined(RXC_CONFIG_BOOTCOMMAND)
+ 	if (CONFIG_ENV_SECT_SIZE > CONFIG_ENV_SIZE) {
+ 		ret = spi_flash_write(env_flash, saved_offset,
+ 			saved_size, saved_buffer);
+ 		if (ret)
+ 			goto done;
+ 	}
+-
++#endif
++
+ 	ret = 0;
+ 	puts("done\n");
+
+diff --git a/drivers/gpio/altera_pio.c b/drivers/gpio/altera_pio.c
+index 3ca5907..3aa31a7 100644
+--- a/drivers/gpio/altera_pio.c
++++ b/drivers/gpio/altera_pio.c
+@@ -256,16 +256,16 @@ int gpio_get_value(unsigned gpio)
+ 	return (pio->negmask & mask) ? !val : val;
+ }
+
+-void gpio_set_value(unsigned gpio, int value)
++int gpio_set_value(unsigned gpio, int value)
+ {
+ 	u32 mask;
+ 	struct altera_pio *pio;
+
+ 	pio = altera_pio_get_and_mask(gpio, &mask);
+ 	if (!pio)
+-		return;
++		return -1;
+ 	if (pio->iot == 'i')
+-		return;
++		return -1;
+
+ 	value = (pio->negmask & mask) ? !value : value;
+ 	if (value)
+@@ -273,7 +273,7 @@ void gpio_set_value(unsigned gpio, int value)
+ 	else
+ 		pio->sh_data &= ~mask;
+ 	writel(pio->sh_data, pio->base + ALTERA_PIO_DATA);
+-	return;
++	return 0;
+ }
+
+ int gpio_is_valid(int number)
+diff --git a/include/configs/socfpga_arria10.h b/include/configs/socfpga_arria10.h
+old mode 100755
+new mode 100644
+index d3f5085..711b0b2
+--- a/include/configs/socfpga_arria10.h
++++ b/include/configs/socfpga_arria10.h
+@@ -16,6 +16,25 @@
+ #define CONFIG_SOCFPGA_ARRIA10
+ #define CONFIG_SOCFPGA_COMMON 1
+
++/* *************************************************** */
++/*
++ * Reflex CES CONFIG
++ *
++ */
++#define RXC_CONFIG_NO_RBF_IMAGE
++/*#define RXC_CONFIG_MMC*/
++#define RXC_CONFIG_BOOTCOMMAND
++/*#define RXC_CONFIG_BOOT_FROM_NET*/
++/*#define RXC_CONFIG_BOOT_FROM_MMC*/
++/*#define  RXC_CONFIG_BOOT_FROM_QSPI*/
++#define RXC_CONFIG_BOOT_HYBRID
++/*#define RXC_CONFIG_NO_ETH*/
++#ifdef RXC_CONFIG_MMC
++	#define RXC_CONFIG_MALLOC_START_IN_DDR 0x79C00000
++	#define RXC_CONFIG_MALLOC_SIZE_IN_DDR 0x6400000
++#endif
++/* *************************************************** */
++
++
++/* *************************************************** */
++/*
++ * Reflex CES CONFIG
++ *
++ */
++#define RXC_CONFIG_NO_RBF_IMAGE
++/*#define RXC_CONFIG_MMC*/
++#define RXC_CONFIG_BOOTCOMMAND
++/*#define RXC_CONFIG_BOOT_FROM_NET*/
++/*#define RXC_CONFIG_BOOT_FROM_MMC*/
++/*#define  RXC_CONFIG_BOOT_FROM_QSPI*/
++#define RXC_CONFIG_BOOT_HYBRID
++/*#define RXC_CONFIG_NO_ETH*/
++#ifdef RXC_CONFIG_MMC
++	#define RXC_CONFIG_MALLOC_START_IN_DDR 0x79C00000
++	#define RXC_CONFIG_MALLOC_SIZE_IN_DDR 0x6400000
++#endif
++/* *************************************************** */
++
++ /* Global data */
++ #define SIZEOF_GD	(0xc0)
++
+ /* Global data */
+ #define SIZEOF_GD	(0xc0)
+
+@@ -107,7 +126,7 @@
+ #define CONFIG_SYS_PROMPT		"SOCFPGA_ARRIA10 # "
+
+ /* EMAC controller and PHY used */
+-#define CONFIG_EMAC_BASE		SOCFPGA_EMAC0_ADDRESS
++#define CONFIG_EMAC_BASE		SOCFPGA_EMAC1_ADDRESS
+ #define CONFIG_EPHY_PHY_ADDR		CONFIG_EPHY0_PHY_ADDR
+ #define CONFIG_PHY_INTERFACE_MODE	PHY_INTERFACE_MODE_RGMII
+
+@@ -143,7 +162,9 @@
+ #undef CONFIG_CMD_IMLS
+ #undef CONFIG_CMD_SDRAM
+ #undef CONFIG_BOOTM_VXWORKS
++#if defined (RXC_CONFIG_MMC) || defined (RXC_CONFIG_NO_ETH)
+ #undef CONFIG_CMD_NFS
++#endif
+ #undef CONFIG_BOOTM_NETBSD
+ #undef CONFIG_BOOTM_PLAN9
+ #undef CONFIG_BOOTM_RTEMS
+@@ -214,6 +259,16 @@
+  */
+ #ifdef CONFIG_SEMIHOSTING
+ #define CONFIG_BOOTCOMMAND ""
++#elif defined(RXC_CONFIG_BOOTCOMMAND)
++	#ifdef RXC_CONFIG_BOOT_FROM_NET
++	#define CONFIG_BOOTCOMMAND "run rxcethload; run rxcethboot"
++	#elif defined(RXC_CONFIG_BOOT_FROM_MMC)
++	#define CONFIG_BOOTCOMMAND "run rxcmmcload; run rxcmmcboot"
++    #elif defined(RXC_CONFIG_BOOT_FROM_QSPI)
++    #define CONFIG_BOOTCOMMAND "run rxcqspiload; run rxcqspiboot"
++	#elif defined(RXC_CONFIG_BOOT_HYBRID)
++	#define CONFIG_BOOTCOMMAND "run rxcqspiload; run rxcmmcboot"
++#endif
+ #elif defined(CONFIG_MMC)
+ #define CONFIG_BOOTCOMMAND " run core_rbf_prog; run callscript; run mmcload;" \
+ 	"run set_initswstate; run mmcboot"
+@@ -248,12 +303,12 @@
+ 	"fdtaddr=" __stringify(CONFIG_SYS_DTB_ADDR) "\0" \
+ 	"bootimage=zImage\0" \
+ 	"bootimagesize=0x5F0000\0" \
+-	"fdtimage=" __stringify(CONFIG_LINUX_DTB_NAME) "\0" \
++	"fdtimage=AlaricLinuxDT.dtb\0" \
+ 	"fdtimagesize=" __stringify(MAX_DTB_SIZE_IN_RAM) "\0" \
+ 	"fdt_high=0x2000000\0" \
+ 	"mmcloadcmd=fatload\0" \
+ 	"mmcloadpart=1\0" \
+-	"mmcroot=/dev/mmcblk0p2\0" \
++	"mmcroot=/dev/mmcblk0p1\0" \
+ 	"qspi_upage_cs=2\0" \
+ 	"qspiloadcs=0\0" \
+ 	"qspibootimageaddr=0x120000\0" \
+@@ -278,6 +333,23 @@
+ 		" root=${mmcroot} rw rootwait;" \
+ 		"fpgabr 1;" \
+ 		"bootz ${loadaddr} - ${fdtaddr}\0" \
++    "rxcethload=dhcp ${bootimage} ; " \
++		"tftp ${fdtaddr} ${fdtimage} ;\0" \
++    "rxcethboot=setenv bootargs " CONFIG_BOOTARGS \
++		" ip=192.168.1.155::192.168.1.34:255.255.255.0::eth0:none root=/dev/nfs rw nfsroot=192.168.1.34:/tftpboot/linaro-nano,nolock,rsize=4096,wsize=4096;"\
++		"bootz ${loadaddr} - ${fdtaddr}\0" \
++	"rxcqspiload=sf probe ${qspiloadcs};" \
++		"sf read ${loadaddr} ${qspibootimageaddr} ${bootimagesize};" \
++		"sf read ${fdtaddr} ${qspifdtaddr} ${fdtimagesize};\0" \
++	"rxcqspiboot=setenv bootargs " CONFIG_BOOTARGS \
++		" root=${qspiroot} rw rootfstype=${qspirootfstype};"\
++		"bootz ${loadaddr} - ${fdtaddr}\0" \
++	"rxcmmcload=mmc rescan;" \
++		"${mmcloadcmd} mmc 0:${mmcloadpart} ${loadaddr} ${bootimage};"\
++		"${mmcloadcmd} mmc 0:${mmcloadpart} ${fdtaddr} ${fdtimage}\0" \
++	"rxcmmcboot=setenv bootargs " CONFIG_BOOTARGS \
++		" root=${mmcroot} ro rootwait vmalloc=512M; fpgabr 1; " \
++		"bootz ${loadaddr} - ${fdtaddr}\0" \
+ 	"netboot=dhcp ${bootimage};" \
+ 		"tftp ${fdtaddr} ${fdtimage} ; run ramboot\0" \
+ 	"qspiload=sf probe ${qspiloadcs};" \
+@@ -323,7 +395,11 @@
+ 		"else" \
+ 			"echo Optional boot script not found." \
+ 			"Continuing to boot normally;" \
+-		"fi;\0"
++		"fi;\0" \
++	"ethaddr=00:07:ed:00:64:04\0" \
++	"ipaddr=192.168.1.155\0" \
++	"serverip=192.168.1.24\0"
+
+ /*
+  * Environment setup
+@@ -379,8 +455,8 @@
+ #define CONFIG_NR_DRAM_BANKS		1
+ /* SDRAM Bank #1 */
+ #define CONFIG_SYS_SDRAM_BASE		0x00000000
+-/* Current emulator using 32MB */
+-#define PHYS_SDRAM_1_SIZE		0x2000000
++/* Current emulator using 2GB */
++#define PHYS_SDRAM_1_SIZE		0x80000000
+ /* SDRAM Bank #1 base address */
+ #define PHYS_SDRAM_1			CONFIG_SYS_SDRAM_BASE
+ /* U-Boot memtest setup */
+@@ -433,6 +509,9 @@
+ #define CONFIG_SYS_NS16550_CLK		(cm_l4_sp_clk_hz)
+
+ #define CONFIG_BAUDRATE			115200
++
++#define CONFIG_DEBUG_SERIAL
++#define CONFIG_DEBUG_EARLY_SERIAL
+ #endif /* CONFIG_SYS_NS16550 */
+
+ /*
+@@ -479,7 +558,9 @@
+ /*
+  * network support
+  */
++#if !defined (RXC_CONFIG_MMC) && !defined (RXC_CONFIG_NO_ETH)
+ #define CONFIG_DESIGNWARE_ETH
++#endif
+ #ifdef CONFIG_DESIGNWARE_ETH
+ #define CONFIG_TX_DESCR_NUM		2
+ #define CONFIG_RX_DESCR_NUM		2
+@@ -513,9 +594,15 @@
+  * MMC support
+  */
+
+-#ifdef CONFIG_MMC
++#ifdef RXC_CONFIG_MMC
++#define CONFIG_MMC
++#endif
+
++#ifdef CONFIG_MMC
++#define CONFIG_MMC_TRACE 1
++#ifndef RXC_CONFIG_MMC
+ #define CONFIG_ENV_IS_IN_MMC
++#endif
+ #define CONFIG_SYS_MMC_ENV_DEV		0/* device 0 */
+ #define CONFIG_ENV_OFFSET		512/* just after the MBR */
+
+@@ -535,7 +597,7 @@
+ #ifdef CONFIG_CADENCE_QSPI
+ /* Enable it if you want to use dual-stacked mode */
+ #undef CONFIG_SF_DUAL_FLASH
+-#define CONFIG_QSPI_RBF_ADDR 		0x720000
++#define CONFIG_QSPI_RBF_ADDR 		0x730000
+ #define CONFIG_SPI_FLASH		/* SPI flash subsystem */
+ #define CONFIG_SPI_FLASH_STMICRO	/* Micron/Numonyx flash */
+ #define CONFIG_SPI_FLASH_SPANSION	/* Spansion flash */
+@@ -573,9 +660,10 @@
+ #define CONFIG_CQSPI_TSLCH_NS		(20)
+ #define CONFIG_CQSPI_DECODER		(0)
+ #define CONFIG_ENV_IS_IN_SPI_FLASH
+-#define CONFIG_ENV_OFFSET		0x710000
++#define CONFIG_ENV_IS_EMBEDDED
++#define CONFIG_ENV_OFFSET		0x720000
+ #define CONFIG_ENV_SIZE			(4 * 1024)
+-#define CONFIG_ENV_SECT_SIZE		(4 * 1024)
++#define CONFIG_ENV_SECT_SIZE		(64 * 1024)
+ #define CONFIG_BOOT_FLASH_TYPE "qspi"
+ #endif	/* CONFIG_CADENCE_QSPI */
+
+@@ -709,4 +772,13 @@ CONFIG_NAND_DENALI is also defined.
+ #define CONFIG_CMD_I2C
+ #endif	/* #ifdef CONFIG_I2C */
+
++/*
++ * GPIO support
++ */
++
++#define CONFIG_ALTERA_PIO
++/* We are only interested by GPIO0 and GPIO1 */
++#define CONFIG_SYS_ALTERA_PIO_NUM 		2
++#define CONFIG_SYS_ALTERA_PIO_GPIO_NUM  48
++
++
+ #endif	/* __CONFIG_H */
+diff --git a/include/environment.h b/include/environment.h
+index 1fdbdad..588d193 100644
+--- a/include/environment.h
++++ b/include/environment.h
+@@ -21,6 +21,10 @@
+  **************************************************************************
+  */
+
++#if !defined(RXC_CONFIG_MMC)
++#undef CONFIG_ENV_IS_IN_MMC
++#endif
++
+ #if defined(CONFIG_ENV_IS_IN_FLASH)
+ # ifndef	CONFIG_ENV_ADDR
+ #  define	CONFIG_ENV_ADDR	(CONFIG_SYS_FLASH_BASE + CONFIG_ENV_OFFSET)

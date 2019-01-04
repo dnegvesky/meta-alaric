@@ -1,0 +1,6 @@
+ 
+The socfpga_arria10_rxc.dts in this directory came from a support ticket from Cedric for Viavi Solutions for a PR example design on Alaric.  It's for kernel v4.9.78-ltsi.
+
+you need to create a patch for this to be added to this folder to replace the Chameleon96 patch.
+
+kernel.patch appears to just be a defconfig file - need to dif this against socfpga_rxc_defconfig and default altera defconfig file

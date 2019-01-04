@@ -1,0 +1,9 @@
+[Unit]
+Description=FPGA Initialization
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/alaric-fpga-init.sh
+
+[Install]
+WantedBy=basic.target
